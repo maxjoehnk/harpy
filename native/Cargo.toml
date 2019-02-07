@@ -1,0 +1,22 @@
+[package]
+name = "harpy"
+version = "0.1.0"
+authors = ["Max Jöhnk <maxjoehnk@gmail.com>"]
+license = "MIT"
+build = "build.rs"
+exclude = ["artifacts.json", "index.node"]
+edition = "2018"
+
+[lib]
+name = "harpy"
+crate-type = ["dylib"]
+
+[build-dependencies]
+neon-build = "0.2.0"
+
+[dependencies]
+neon = "0.2.0"
+ssd1306 = "0.2.0"
+embedded-hal = "0.2.1"
+linux-embedded-hal = "0.2.0"
+embedded-graphics = "0.4.5"

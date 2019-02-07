@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es6",
+    "outDir": "lib",
+    "noEmitOnError": true,
+    "sourceMap": true,
+    "lib": [
+      "es5",
+      "es6",
+      "es7",
+      "dom"
+    ]
+  },
+  "exclude": [
+    "node_modules"
+  ]
+}
