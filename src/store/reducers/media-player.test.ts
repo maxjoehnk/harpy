@@ -1,9 +1,10 @@
-import { mediaPlayerReducer } from './media-player';
+import { mediaPlayerReducer, MediaPlayerState } from './media-player';
 import { assert } from 'chai';
 import * as mocha from 'mocha';
 import * as testCases from 'test-cases';
 import { HomeassistantActions } from '../actions/homeassistant';
 import { volumeDown, volumeUp } from '../actions/media-player';
+import { enterMenu } from '../actions/menu';
 
 const test = testCases.setup(mocha.test);
 
@@ -13,14 +14,16 @@ suite('MediaPlayerReducer', () => {
 
         assert.deepEqual(state, {
             volume: 0,
-            muted: false
+            muted: false,
+            players: {}
         });
     });
 
     test('an unrelated action should not modify the state', () => {
-        const state = {
+        const state: MediaPlayerState = {
             volume: 0.5,
-            muted: true
+            muted: true,
+            players: {}
         };
 
         const result = mediaPlayerReducer(state, { type: 'some action' });
@@ -45,16 +48,20 @@ suite('MediaPlayerReducer', () => {
                 }
             };
 
-            const state = {
+            const state: MediaPlayerState = {
                 volume: 0,
-                muted: false
+                muted: false,
+                players: {}
             };
 
             const result = mediaPlayerReducer(state, action);
 
             assert.deepEqual(result, {
-                volume,
-                muted: false
+                volume: 0,
+                muted: false,
+                players: {
+                    'media_player.yamaha_receiver': volume
+                }
             });
         });
 
@@ -64,7 +71,8 @@ suite('MediaPlayerReducer', () => {
         .run('volume up should update the volume', (volume, expected) => {
             const state = {
                 volume,
-                muted: false
+                muted: false,
+                players: {}
             };
 
             const result = mediaPlayerReducer(state, volumeUp());
@@ -78,11 +86,29 @@ suite('MediaPlayerReducer', () => {
         .run('volume down should update the volume', (volume, expected) => {
             const state = {
                 volume,
-                muted: false
+                muted: false,
+                players: {}
             };
 
             const result = mediaPlayerReducer(state, volumeDown());
 
             assert.approximately(result.volume, expected, Number.EPSILON);
+        });
+
+    test
+        .case(0.2)
+        .case(0.6)
+        .run('menu enter should copy the volume', volume => {
+            const state: MediaPlayerState = {
+                volume: 0,
+                muted: false,
+                players: {
+                    'media_player.yamaha_receiver': volume
+                }
+            };
+
+            const result = mediaPlayerReducer(state, enterMenu());
+
+            assert.equal(result.volume, volume);
         });
 });
