@@ -2,6 +2,7 @@ import { Display } from '../../native';
 import { DisplayState, MenuItem } from '../store/reducers/display';
 import * as debug from 'debug';
 import { State } from '../store';
+import { performance } from 'perf_hooks';
 
 const d = debug('harpy:ui');
 
@@ -10,11 +11,14 @@ export function connect(display: Display) {
         d('render');
         display.clear();
         if (state.display.overview) {
-            drawMainMenu(state.display);
+            mainMenu(state.display);
         }else {
-            drawVolumeBar(state);
+            volumeBar(state);
         }
+        performance.mark('flush_before');
         display.flush();
+        performance.mark('flush_after');
+        performance.measure('flush', 'flush_before', 'flush_after');
     }
 
     function drawMainMenu(state: DisplayState) {
@@ -28,6 +32,9 @@ export function connect(display: Display) {
         display.renderBar(state.mediaPlayer.volume);
     }
 
-    return render;
+    const mainMenu = performance.timerify(drawMainMenu);
+    const volumeBar = performance.timerify(drawVolumeBar);
+
+    return performance.timerify(render);
 }
 

@@ -6,11 +6,39 @@ use neon::prelude::*;
 
 use crate::display::Display;
 use crate::input::{Button, Encoder};
+use std::sync::{Arc, Mutex, mpsc};
 
 mod error;
 mod display;
 mod input;
 mod output;
+
+pub struct EncoderTask(Arc<Mutex<mpsc::Receiver<i32>>>);
+
+impl Task for EncoderTask {
+    type Output = i32;
+    type Error = String;
+    type JsEvent = JsNumber;
+
+    fn perform(&self) -> Result<Self::Output, Self::Error> {
+        let rx = self
+            .0
+            .lock()
+            .map_err(|_| "Could not obtain lock on receiver".to_string())?;
+
+        rx.recv().map_err(|_| "Failed to receive event".to_string())
+    }
+
+    fn complete(
+        self,
+        mut cx: TaskContext,
+        event: Result<Self::Output, Self::Error>,
+    ) -> JsResult<Self::JsEvent> {
+        let event = event.or_else(|err| cx.throw_error(&err.to_string()))?;
+
+        Ok(cx.number(event as f64))
+    }
+}
 
 declare_types! {
     pub class JsButton for Button {
@@ -42,13 +70,14 @@ declare_types! {
         }
 
         method poll(mut cx) {
+            let cb = cx.argument::<JsFunction>(0)?;
             let this = cx.this();
-            let direction = {
-                let guard = cx.lock();
-                let encoder = this.borrow(&guard);
-                encoder.poll().unwrap()
-            };
-            Ok(cx.number(direction).upcast())
+            let rx = cx.borrow(&this, |encoder| Arc::clone(&encoder.receiver));
+            let task = EncoderTask(rx);
+
+            task.schedule(cb);
+
+            Ok(JsUndefined::new().upcast())
         }
     }
 }

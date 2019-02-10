@@ -1,4 +1,4 @@
-import { displayReducer, MenuItem } from './display';
+import displayReducer, { MenuItem } from './display';
 import { assert } from 'chai';
 import * as mocha from 'mocha';
 import * as testCases from 'test-cases';

@@ -14,5 +14,5 @@ export class Button {
 export class Encoder {
     constructor(clk: number, data: number);
 
-    poll(): number;
+    poll(cb: (err, dir: number) => void);
 }

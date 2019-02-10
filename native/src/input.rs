@@ -4,13 +4,15 @@ use hal::sysfs_gpio::{Direction, Edge};
 use std::sync::mpsc;
 use std::thread;
 use crate::error::Result;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 const BTN_PIN: u64 = 17;
 const ENCODER_CLK_PIN: u64 = 27;
 const ENCODER_DAT_PIN: u64 = 22;
 
 pub struct Button {
-    receiver: mpsc::Receiver<()>,
+    pub receiver: mpsc::Receiver<()>,
     handle: thread::JoinHandle<()>
 }
 
@@ -49,7 +51,7 @@ impl Button {
 }
 
 pub struct Encoder {
-    receiver: mpsc::Receiver<i32>,
+    pub receiver: Arc<Mutex<mpsc::Receiver<i32>>>,
     handle: thread::JoinHandle<()>
 }
 
@@ -85,17 +87,9 @@ impl Encoder {
         });
 
         Ok(Encoder {
-            receiver,
+            receiver: Arc::new(Mutex::new(receiver)),
             handle
         })
-    }
-
-    pub fn poll(&self) -> Result<i32> {
-        match self.receiver.try_recv() {
-            Ok(dir) => Ok(dir),
-            Err(mpsc::TryRecvError::Empty) => Ok(0),
-            Err(err) => Err(err.into())
-        }
     }
 }
 

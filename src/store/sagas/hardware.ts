@@ -1,4 +1,4 @@
-import { call, put, spawn, take } from 'redux-saga/effects';
+import { all, call, put, spawn, take } from 'redux-saga/effects';
 import { eventChannel } from 'redux-saga';
 import { Button, Encoder } from '../../../native';
 import { buttonPress, turnLeft, turnRight } from '../actions/hardware';
@@ -9,8 +9,10 @@ const btn = new Button(17);
 const encoder = new Encoder(27, 22);
 
 export function* hardwareSaga() {
-    yield spawn(buttonSaga);
-    yield spawn(encoderSaga);
+    yield all([
+        spawn(buttonSaga),
+        spawn(encoderSaga)
+    ]);
 }
 
 function* buttonSaga() {
@@ -24,9 +26,8 @@ function* buttonSaga() {
 }
 
 function* encoderSaga() {
-    const channel = yield call(poll, encoder);
     while (true) {
-        const direction = yield take(channel);
+        const direction = yield call(pollEncoder, encoder);
         if (direction === 1) {
             yield put(turnRight());
         }else if (direction === -1) {
@@ -45,3 +46,13 @@ const poll = (pollable) => {
         return () => clearInterval(intervalId);
     });
 };
+
+const pollEncoder = (encoder: Encoder) =>
+    new Promise((resolve, reject) =>
+        encoder.poll((err, dir) => {
+            if (err) {
+                return reject(err);
+            }
+            return resolve(dir);
+        })
+    );

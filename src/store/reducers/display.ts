@@ -1,4 +1,5 @@
 import { MenuActions } from '../actions/menu';
+import { performance } from 'perf_hooks';
 
 const actionReducers = new Map();
 actionReducers.set(MenuActions.Enter, enterReducer);
@@ -57,10 +58,14 @@ function prevReducer(state: DisplayState, action): DisplayState {
     };
 }
 
-export function displayReducer(state: DisplayState = initialState, action): DisplayState {
+function displayReducer(state: DisplayState = initialState, action): DisplayState {
     const reducer = actionReducers.get(action.type);
     if (reducer == null) {
         return state;
     }
     return reducer(state, action);
 }
+
+const reducer = performance.timerify(displayReducer);
+
+export default reducer;

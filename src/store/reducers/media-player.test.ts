@@ -1,4 +1,4 @@
-import { mediaPlayerReducer, MediaPlayerState } from './media-player';
+import mediaPlayerReducer, { MediaPlayerState } from './media-player';
 import { assert } from 'chai';
 import * as mocha from 'mocha';
 import * as testCases from 'test-cases';

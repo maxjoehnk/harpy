@@ -1,9 +1,9 @@
 import { applyMiddleware, combineReducers, createStore, Store } from 'redux';
-import { displayReducer, DisplayState } from './reducers/display';
+import displayReducer, { DisplayState } from './reducers/display';
 import createSagaMiddleware from 'redux-saga';
 import rootSaga from './sagas';
 import { logger } from './middleware/logger';
-import { mediaPlayerReducer, MediaPlayerState } from './reducers/media-player';
+import mediaPlayerReducer, { MediaPlayerState } from './reducers/media-player';
 
 export interface State {
     display: DisplayState;

@@ -1,6 +1,7 @@
 import { HomeassistantActions } from '../actions/homeassistant';
 import { MediaPlayerActions } from '../actions/media-player';
 import { MenuActions } from '../actions/menu';
+import { performance } from 'perf_hooks';
 
 const actionReducers = new Map();
 actionReducers.set(HomeassistantActions.EntityUpdate, entityUpdateReducer);
@@ -57,10 +58,14 @@ function volumeDownReducer(state: MediaPlayerState) {
     };
 }
 
-export function mediaPlayerReducer(state: MediaPlayerState = initialState, action): MediaPlayerState {
+function mediaPlayerReducer(state: MediaPlayerState = initialState, action): MediaPlayerState {
     const reducer = actionReducers.get(action.type);
     if (reducer == null) {
         return state;
     }
     return reducer(state, action);
 }
+
+const reducer = performance.timerify(mediaPlayerReducer);
+
+export default reducer;
