@@ -3,42 +3,17 @@ extern crate linux_embedded_hal as hal;
 extern crate neon;
 
 use neon::prelude::*;
-
+use std::sync::Arc;
 use crate::display::Display;
 use crate::input::{Button, Encoder};
-use std::sync::{Arc, Mutex, mpsc};
 
 mod error;
 mod display;
 mod input;
 mod output;
+mod tasks;
 
-pub struct EncoderTask(Arc<Mutex<mpsc::Receiver<i32>>>);
-
-impl Task for EncoderTask {
-    type Output = i32;
-    type Error = String;
-    type JsEvent = JsNumber;
-
-    fn perform(&self) -> Result<Self::Output, Self::Error> {
-        let rx = self
-            .0
-            .lock()
-            .map_err(|_| "Could not obtain lock on receiver".to_string())?;
-
-        rx.recv().map_err(|_| "Failed to receive event".to_string())
-    }
-
-    fn complete(
-        self,
-        mut cx: TaskContext,
-        event: Result<Self::Output, Self::Error>,
-    ) -> JsResult<Self::JsEvent> {
-        let event = event.or_else(|err| cx.throw_error(&err.to_string()))?;
-
-        Ok(cx.number(event as f64))
-    }
-}
+use tasks::*;
 
 declare_types! {
     pub class JsButton for Button {
@@ -73,7 +48,7 @@ declare_types! {
             let cb = cx.argument::<JsFunction>(0)?;
             let this = cx.this();
             let rx = cx.borrow(&this, |encoder| Arc::clone(&encoder.receiver));
-            let task = EncoderTask(rx);
+            let task = EncoderTask::new(rx);
 
             task.schedule(cb);
 
@@ -89,48 +64,32 @@ declare_types! {
             Ok(display)
         }
 
-        method clear(mut cx) {
-            let mut this = cx.this();
-            {
-                let mut guard = cx.lock();
-                let mut display = this.borrow_mut(&mut guard);
-                display.clear();
-            }
-            Ok(cx.undefined().upcast())
-        }
+        method renderMenu(mut cx) {
+            let title = cx.argument::<JsString>(0)?.value();
+            let entry = cx.argument::<JsString>(1)?.value();
+            let cb = cx.argument::<JsFunction>(2)?;
 
-        method flush(mut cx) {
-            let mut this = cx.this();
-            {
-                let guard = cx.lock();
-                let mut display = this.borrow_mut(&guard);
-                display.flush().unwrap();
-            }
-            Ok(cx.undefined().upcast())
-        }
+            let this = cx.this();
+            let display = cx.borrow(&this, |display| Arc::clone(&display.display));
+            let task = RenderMenuTask::new(title, entry, display);
 
-        method renderText(mut cx) {
-            let text: String = cx.argument::<JsString>(0)?.value();
-            let row = cx.argument::<JsNumber>(1)?.value() as i32;
+            task.schedule(cb);
 
-            let mut this = cx.this();
-            {
-                let guard = cx.lock();
-                let mut display = this.borrow_mut(&guard);
-                display.render_text(&text, row);
-            }
-            Ok(cx.undefined().upcast())
+            Ok(JsUndefined::new().upcast())
         }
 
         method renderBar(mut cx) {
-            let progress = cx.argument::<JsNumber>(0)?.value();
-            let mut this = cx.this();
-            {
-                let guard = cx.lock();
-                let mut display = this.borrow_mut(&guard);
-                display.render_bar(progress);
-            }
-            Ok(cx.undefined().upcast())
+            let title = cx.argument::<JsString>(0)?.value();
+            let value = cx.argument::<JsNumber>(1)?.value();
+            let cb = cx.argument::<JsFunction>(2)?;
+
+            let this = cx.this();
+            let display = cx.borrow(&this, |display| Arc::clone(&display.display));
+            let task = RenderBarTask::new(title, value, display);
+
+            task.schedule(cb);
+
+            Ok(JsUndefined::new().upcast())
         }
     }
 }

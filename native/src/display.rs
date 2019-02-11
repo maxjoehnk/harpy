@@ -9,12 +9,14 @@ use ssd1306::prelude::*;
 
 use crate::error::Result;
 use crate::output::setup_output;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 const RST_PIN: u64 = 23;
 const DC_PIN: u64 = 24;
 
 pub struct Display {
-    pub display: GraphicsMode<SpiInterface<Spidev, Pin>>
+    pub display: Arc<Mutex<GraphicsMode<SpiInterface<Spidev, Pin>>>>
 }
 
 impl Display {
@@ -38,31 +40,31 @@ impl Display {
         display.clear();
 
         Ok(Display {
-            display
+            display: Arc::new(Mutex::new(display))
         })
     }
 
-    pub fn clear(&mut self) {
-        self.display.clear()
-    }
-
-    pub fn flush(&mut self) -> Result<()> {
-        self.display.flush()?;
+    pub fn clear(&self) -> Result<()> {
+        let mut display = self.display.lock().map_err(|err| format!("{:?}", err))?;
+        display.clear();
         Ok(())
     }
 
-    pub fn render_text(&mut self, text: &str, row: i32) {
+    pub fn render_text(&self, text: &str, row: i32) -> Result<()> {
         let pos = Coord::new(0, row * 16);
-        self.display.draw(
+        let mut display = self.display.lock().map_err(|err| format!("{:?}", err))?;
+        display.draw(
             Font8x16::render_str(text).translate(pos).into_iter()
-        )
+        );
+        Ok(())
     }
 
-    pub fn render_bar(&mut self, progress: f64) {
+    pub fn render_bar(&self, progress: f64) -> Result<()> {
+        let mut display = self.display.lock().map_err(|err| format!("{:?}", err))?;
         let stroke = 2u8;
         let top_left = Coord::new(0, 16);
         let bottom_right = Coord::new(126, 30);
-        self.display.draw(
+        display.draw(
             Rect::new(top_left, bottom_right)
                 .with_stroke(Some(1u8.into()))
                 .with_stroke_width(stroke)
@@ -71,10 +73,11 @@ impl Display {
         let width = (124f64 * progress).floor() as i32;
         let top_left = Coord::new(1, 17);
         let bottom_right = Coord::new(width, 29);
-        self.display.draw(
+        display.draw(
             Rect::new(top_left, bottom_right)
                 .with_fill(Some(1u8.into()))
                 .into_iter()
-        )
+        );
+        Ok(())
     }
 }

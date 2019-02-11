@@ -1,39 +1,27 @@
 import { Display } from '../../native';
-import { DisplayState, MenuItem } from '../store/reducers/display';
+import { MenuItem } from '../store/reducers/display';
 import * as debug from 'debug';
 import { State } from '../store';
 import { performance } from 'perf_hooks';
+import { promisify } from 'util';
 
 const d = debug('harpy:ui');
 
 export function connect(display: Display) {
-    function render(state: State) {
+    const renderMenu = promisify(display.renderMenu.bind(display));
+    const renderBar = promisify(display.renderBar.bind(display));
+
+    async function render(state: State) {
         d('render');
-        display.clear();
+        performance.mark('render');
         if (state.display.overview) {
-            mainMenu(state.display);
+            await renderMenu('Menu', MenuItem[state.display.item]);
         }else {
-            volumeBar(state);
+            await renderBar('Volume', state.mediaPlayer.volume);
         }
-        performance.mark('flush_before');
-        display.flush();
-        performance.mark('flush_after');
-        performance.measure('flush', 'flush_before', 'flush_after');
+        performance.mark('render_done');
+        performance.measure('render', 'render', 'render_done');
     }
-
-    function drawMainMenu(state: DisplayState) {
-        display.renderText('Menu', 0);
-        const text = MenuItem[state.item];
-        display.renderText(text, 1);
-    }
-
-    function drawVolumeBar(state) {
-        display.renderText('Volume', 0);
-        display.renderBar(state.mediaPlayer.volume);
-    }
-
-    const mainMenu = performance.timerify(drawMainMenu);
-    const volumeBar = performance.timerify(drawVolumeBar);
 
     return performance.timerify(render);
 }
